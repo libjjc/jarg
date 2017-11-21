@@ -1,72 +1,72 @@
 #include "jarg.h"
-
-jargnode::jargnode() {
+using namespace jarg;
+arg::arg() {
 	init();
 }
 
-jargnode::jargnode(const string& name) {
+arg::arg(const string& name) {
 	init();
 	_name = name;
 }
 
-jargnode::jargnode(const jargnode& node) {
+arg::arg(const arg& node) {
 	_name = node._name;
 	_sname = node._sname;
 	_value = node._value;
 	_brief = node._brief;
-	_option = node._option;
+	_type = node._type;
 }
 
-jargnode& jargnode::operator=(const jargnode& node) {
+arg& arg::operator=(const arg& node) {
 	_name = node._name;
 	_sname = node._sname;
 	_value = node._value;
 	_brief = node._brief;
-	_option = node._option;
+	_type = node._type;
 	return *this;
 }
 
-jargnode::~jargnode() {
+arg::~arg() {
 
 }
 
-void jargnode::init() {
-
+void arg::init() {
+	_value = jargdata();
 }
 
-const string& jargnode::name()const {
+const string& arg::name()const {
 	return _name;
 }
 
-jargnode& jargnode::name(const string& s) {
+arg& arg::name(const string& s) {
 	_name = s;
 	return *this;
 }
 
-const string& jargnode::sname()const {
+const string& arg::sname()const {
 	return _sname;
 }
 
-jargnode& jargnode::sname(const string& s) {
+arg& arg::sname(const string& s) {
 	_sname = s;
 	return *this;
 }
 
-const string& jargnode::brief()const {
+const string& arg::brief()const {
 	return _brief;
 }
 
-jargnode& jargnode::brief(const string& s) {
+arg& arg::brief(const string& s) {
 	_brief = s;
 	return *this;
 }
 
-var_opt jargnode::option()const {
-	return _option;
+argtype arg::type()const {
+	return _type;
 }
 
-jargnode& jargnode::option(var_opt opt) {
-	_option = opt;
+arg& arg::type(argtype opt) {
+	_type = opt;
 	return *this;
 }
 
@@ -80,23 +80,6 @@ jap::~jap() {
 
 }
 
-jargnode& jap::optional(const string& name) {
-	_args.push_back(jargnode(name).option(var_opt::optional));
-	_idx[name] = _args.size() - 1;
-	return _args.back();
-}
-
-jargnode& jap::required(const string& name) {
-	_args.push_back(jargnode(name).option(var_opt::required));
-	_idx[name] = _args.size() - 1;
-	return _args.back();
-}
-
-jargnode& jap::rest(const string& name) {
-	_args.push_back(jargnode(name).option(var_opt::rest));
-	_idx[name] = _args.size() - 1;
-	return _args.back();
-}
 
 const string & jap::selfpath() const{
 	return _selfpath;
@@ -120,13 +103,75 @@ jap& jap::usage(const string& s) {
 	return *this;
 }
 
+retcode jap::nameparse(int argc, char ** argv, int * where){
+
+}
+
 retcode jap::parse(int argc , char** argv) {
 	retcode ret = retcode::r_ok;
+	_selfpath = argv[0];
+	set<size_t> spclst;
+	size_t cntr = 0;
+	for (int i = 1; i < argc; i++) {
+		string s = argv[i];
+		if (s.size() >= 2 && s.substr(0, 2) == "--") {
+			if (_idx.end() == _idx.find(s.substr(2))) {
+				stringstream ss;
+				ss << "unkown parameter[" << s.substr(2) << "]";
+				_errors.push_back(ss.str());
+				return retcode::r_err;
+			}
+			size_t pos = s.find('=',2);
+			if (string::npos == pos) {
+				stringstream ss;
+				ss << "incompleted parameter[" << argv[i] << "]";
+				_errors.push_back(ss.str());
+				return retcode::r_err;
+			}
+			string k = s.substr(2, pos - 2);
+			string v = s.substr(pos + 1);
+			size_t idx = _idx.at(k);
+			if (idx >= _args.size()) {
+				_errors.push_back("unkown error , parameter index out range");
+				return retcode::r_err;
+			}
+			if (spclst.end() != spclst.find(idx)) {
+				stringstream ss;
+				ss << "the parameter[" << k << "] is defined , or same to ["
+					<< _args[*spclst.find(idx)].name() << ","
+					<< _args[*spclst.find(idx)].sname() << "]";
+				_errors.push_back(ss.str());
+				return retcode::r_err;
+			}
+			arg& node = _args[idx];
+			spclst.insert(idx);
+			if (var_opt::required == node.option()) {
+				cntr++;
+			}
+			node.origin(v);
+			continue;
+		}
+		if (s.size() >= 1 && s[0] == '-') {
+			s = s.substr(1);
+			if (s.empty()) {
+				_errors.push_back("incompleted parameter '-' , missing name");
+				return retcode::r_err;
+			}
+			if (s.size() == 1) {
+				if (_idx.end() == _idx.find(s)) {
+					arg& node = _args[_idx.at(s)];
+					if( valtype::t_bool == node.value.type())
+				}
+			}
+			continue;
+		}
+
+	}
 	return ret;
 }
 
 const string& jap::help()const {
-
+	return "";
 }
 
 
