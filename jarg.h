@@ -26,12 +26,20 @@ namespace jarg {
 	template<>struct default_value<uint64_t> { const uint64_t value = 0; };
 	template<>struct default_value<string> { const string value = ""; };
 
-	template<typename T> T strto(const string& str) { return T(); }
-	template<> double strto<double>(const string& str) { return atof(str.c_str()); }
-	template<> float strto<float>(const string& str) { return static_cast<float>(atof(str.c_str())); }
-	template<> int strto<int>(const string& str) { return atoi(str.c_str()); }
-	template<> long strto<long>(const string& str) { return atol(str.c_str()); }
-	template<> bool strto<bool>(const string& str) {
+	template<typename T> T inline strto(const string& str) { return T(); }
+	template<> double inline strto<double>(const string& str) { return atof(str.c_str()); }
+	template<> float inline strto<float>(const string& str) { return static_cast<float>(atof(str.c_str())); }
+	template<> char inline strto<char>(const string& str) { return str.empty() ? '\0' : str[0]; }
+	template<> int8_t inline strto<int8_t>(const string& str) { return  static_cast<int8_t>(atoi(str.c_str())); }
+	template<> int16_t inline strto<int16_t>(const string& str) { return static_cast<int16_t>(atoi(str.c_str())); }
+	template<> int32_t inline strto<int32_t>(const string& str) { return static_cast<int32_t>(atoi(str.c_str())); }
+	template<> int64_t inline strto<int64_t>(const string& str) { return static_cast<int64_t>(atoi(str.c_str())); }
+	template<> uint8_t inline strto<uint8_t>(const string& str) { return static_cast<uint8_t>(atoi(str.c_str())); }
+	template<> uint16_t inline strto<uint16_t>(const string& str) { return static_cast<uint16_t>(atoi(str.c_str())); }
+	template<> uint32_t inline strto<uint32_t>(const string& str) { return static_cast<uint32_t>(atoi(str.c_str())); }
+	template<> uint64_t inline strto<uint64_t>(const string& str) { return static_cast<uint64_t>(atoi(str.c_str())); }
+	template<> string inline strto<string>(const string& str) {return str;	}
+	template<> bool inline strto<bool>(const string& str) {
 		return (str == "0" || str.empty() || str == "false") ? false : true;
 	}
 
@@ -75,129 +83,46 @@ namespace jarg {
 	template<> struct typecode<double> { enum { code = valtype::t_double }; };
 	template<> struct typecode<string> { enum { code = valtype::t_string }; };
 
-	//template<valtype> struct realtype { typedef bool rtype; };
-	//template<> struct realtype<valtype::t_bool> { typedef bool rtype; };
-	//template<> struct realtype<valtype::t_char> { typedef char rtype; };
-	//template<> struct realtype<valtype::t_int8> { typedef int8_t rtype; };
-	//template<> struct realtype<valtype::t_int16> { typedef int16_t rtype; };
-	//template<> struct realtype<valtype::t_int32> { typedef int32_t rtype; };
-	//template<> struct realtype<valtype::t_int64> { typedef int64_t rtype; };
-	//template<> struct realtype<valtype::t_uint8> { typedef uint8_t rtype; };
-	//template<> struct realtype<valtype::t_uint16> { typedef uint16_t rtype; };
-	//template<> struct realtype<valtype::t_uint32> { typedef uint32_t rtype; };
-	//template<> struct realtype<valtype::t_uint64> { typedef uint64_t rtype; };
-
-	template<typename T> T& valref(void* pt) {
-		stringstream ss;
-		ss << "type = " << typeid(t).name() << " is an invalid type." << std::endl;
-		throw std::invalid_argument(ss.c_str());
-	}
-
-	template<> bool& valref<bool>(void*pt) { return *((bool*)pt); }
-	template<> char& valref<char>(void*pt) { return *((char*)pt); }
-	template<> int8_t& valref<int8_t>(void*pt) { return *((int8_t*)pt); }
-	template<> int16_t& valref<int16_t>(void*pt) { return *((int16_t*)pt); }
-	template<> int32_t& valref<int32_t>(void*pt) { return *((int32_t*)pt); }
-	template<> int64_t& valref<int64_t>(void*pt) { return *((int64_t*)pt); }
-	template<> uint8_t& valref<uint8_t>(void*pt) { return *((uint8_t*)pt); }
-	template<> uint16_t& valref<uint16_t>(void*pt) { return *((uint16_t*)pt); }
-	template<> uint32_t& valref<uint32_t>(void*pt) { return *((uint32_t*)pt); }
-	template<> uint64_t& valref<uint64_t>(void*pt) { return *((uint64_t*)pt); }
-
-
-	enum class argtype : int {
-		key,
-		flag,
-		rest
+	enum class argoption : int {
+		key = 0,
+		check = 1,
+		rest = 2
 	};
 
-	typedef struct jargdata {
-		jargdata() {
-			//type = valtype::t_unkown;
-			//pval = NULL;
-			str = "";
-			memset(&dv.buf[0], 0, 16);
-		}
-		//valtype type;
-		string str;
-		//void* pval;
-		union {
-			char buf[16];
-			bool b;
-			char ch;
-			int8_t i8;
-			int16_t i16;
-			int32_t i32;
-			int64_t i64;
-			uint8_t u8;
-			uint16_t u16;
-			uint32_t u32;
-			uint64_t u64;
-			float f;
-			double lf;
-		} dv;
-	}jarg_t;
+
 
 	class arg {
 	public:
-		arg();
-		explicit arg(const string& name);
+		//arg();
+		arg(const string& name,const string& sname = "");
 		arg(const arg& node);
 		arg& operator=(const arg& node);
 		~arg();
 	public:
 		const string& name()const;
-		arg& name(const string& s);
+		//arg& name(const string& s);
 		const string& sname()const;
-		arg& sname(const string& s);
+		//arg& sname(const string& s);
 		const string& brief()const;
 		arg& brief(const string& s);
 		const string& origin()const;
 		arg& origin(const string& s);
 
-		template<typename T> retcode wait(T* t = NULL, T d = defaule_value<T>().value) {
-			_value.type = typecode<T>::code;
-			_value.pval = (void*)t;
-			set<T>(d);
+		template<typename T> arg& wait(T* t = NULL, T d = defaule_value<T>().value) {
+			_type = static_cast<valtype>(typecode<T>::code);
+			_wait = (void*)t;
+			return *this;
 		}
+		void* wait()const;
 
-		argtype type()const;
-		arg& type(argtype opt);
-		template<typename T> arg& dv(const T t) {
-			stringstream ss;
-			ss << "type = " << typeid(t).name() << " is an invalid type." << std::endl;
-			throw std::invalid_argument(ss.c_str());
-		}
-		template<> arg& dv<char>(const char t) { _value.dv.ch = t; return *this; }
-		template<> arg& dv<bool>(const bool t) { _value.dv.b = t; return *this; }
-		template<> arg& dv<int8_t>(const int8_t t) { _value.dv.i8 = t; return *this; }
-		template<> arg& dv<int16_t>(const int16_t t) { _value.dv.i16 = t; return *this; }
-		template<> arg& dv<int32_t>(const int32_t t) { _value.dv.i32 = t; return *this; }
-		template<> arg& dv<int64_t>(const int64_t t) { _value.dv.i64 = t; return *this; }
-		template<> arg& dv<uint8_t>(const uint8_t t) { _value.dv.u8 = t; return *this; }
-		template<> arg& dv<uint16_t>(const uint16_t t) { _value.dv.u16 = t; return *this; }
-		template<> arg& dv<uint32_t>(const uint32_t t) { _value.dv.u32 = t; return *this; }
-		template<> arg& dv<uint64_t>(const uint64_t t) { _value.dv.u64 = t; return *this; }
-		template<> arg& dv<float>(const float t) { _value.dv.f = t; return *this; }
-		template<> arg& dv<double>(const double t) { _value.dv.lf = t; return *this; }
+		argoption option()const;
+		arg& option(argoption opt);
 
-		template<typename T> T dv()const {
-			stringstream ss;
-			ss << "type = " << typeid(t).name() << " is an invalid type." << std::endl;
-			throw std::invalid_argument(ss.c_str());
-		}
-		template<> char dv<>()const { return _value.dv.ch; }
-		template<> bool dv<>()const { return _value.dv.b; }
-		template<> int8_t dv<>()const { return _value.dv.i8; }
-		template<> int16_t dv<>()const { return _value.dv.i16; }
-		template<> int32_t dv<>()const { return _value.dv.i32; }
-		template<> int64_t dv<>()const { return _value.dv.i64; }
-		template<> uint8_t dv<>()const { return _value.dv.u8; }
-		template<> uint16_t dv<>()const { return _value.dv.u16; }
-		template<> uint32_t dv<>()const { return _value.dv.u32; }
-		template<> uint64_t dv<>()const { return _value.dv.u64; }
-		template<> float dv<>()const { return _value.dv.f; }
-		template<> double dv<>()const { return _value.dv.lf; }
+		valtype type()const;
+		arg& type(valtype vt);
+
+	public:
+
 
 	private:
 
@@ -207,11 +132,16 @@ namespace jarg {
 		string _name;
 		string _sname;
 		string _origin;
-		jarg_t _value;
+		
 		valtype _type;
 		void* _wait;
+
 		string _brief;
-		argtype _argtype;
+		argoption _option;
+	};
+
+	struct get_real_value {
+		void* operator()(const string& s, valtype type, void* value);
 	};
 
 	class jap {
@@ -220,17 +150,18 @@ namespace jarg {
 		~jap();
 	protected:
 		jap(const jap& rhs) {}
-	public:
-		arg& optional(const string& name);
-		arg& required(const string& name);
-		arg& rest(const string& name);
+
 	public:
 
-		arg& flag(const string& name);
-		template<typename>
-		arg& key(const string& name);
-		template<typename T = string>
-		arg& rest(const string& name, T* t);
+		arg& check(const string& name,const string& sname = "");
+		arg& key(const string& name,const string& sname = "");
+		arg& rest(const string& name,const string& sname = "");
+
+		bool get(const string& key);
+		template<typename T>
+		T get(const string& key, T v4none = default_value<T>().value);
+		//template<typename T>
+		//T rest(const string& key, T v4none);
 
 	public:
 		const string& selfpath()const;
@@ -242,51 +173,36 @@ namespace jarg {
 	protected:
 		retcode nameparse(int argc, char** argv, int * where);
 		retcode snameparse(int argc, char** argv, int * where);
-		retcode restparse(int argc, char** argv, int * where);
+		retcode keyparse(const string& key, const string& value);
 	public:
 		retcode parse(int argc, char** argv);
-		const string& help()const;
-
+		const string& man()const;
 	private:
 		typedef pair<valtype, void*> arg_t;
+
 		string _selfpath;
 		string _brief;
 		string _usage;
-		vector<string> _errors;
 		vector<arg> _args;
-		vector<arg> _rests;
+		vector<arg> _rest;
 
 		map<string, size_t> _idx;
-		//map<string, arg_t> _wait;
 	};
 
-	template<typename T>
-	arg& jap::key(const string& name) {
-		jarnode node = jarnode(name).type(argtype::key);
-		jardata data;
-		data.value.type = typecode<T>::code;
-		node.value(data);
-		_args.push_back(arg(name).type(argtype::key));
-		_idx[name] = _args.size() - 1;
-		return _args.back();
-	}
+
 
 	template<typename T>
-	arg& jap::required(const string& name, T* t) {
-		_args.push_back(arg(name).option(var_opt::required));
-		_wait[name] = arg_t(typecode<T>::code, (void*)t);
-		_idx[name] = _args.size() - 1;
-		return _args.back();
+	inline T jap::get(const string & skey, T v4none){
+		if (_idx.end() == _idx.find(skey)) {
+			return v4none;
+		}
+		arg& a = _args[_idx.at(skey)];
+		if (a.origin() == "") {
+			return v4none;
+		}
+		
+		return strto<T>(a.origin());
 	}
-
-	template<typename T>
-	arg& jap::rest(const string& name, T* t) {
-		_args.push_back(arg(name).option(var_opt::rest));
-		_wait[name] = arg_t(typecode<T>::code, (void*)t);
-		_idx[name] = _args.size() - 1;
-		return _args.back();
-	}
-
 
 }
 

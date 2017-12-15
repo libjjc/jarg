@@ -1,28 +1,32 @@
 #include "jarg.h"
+#include <iostream>
 using namespace jarg;
-arg::arg() {
-	init();
-}
-
-arg::arg(const string& name) {
+arg::arg(const string& name,const string& sname) {
 	init();
 	_name = name;
+	_sname = sname;
+	_brief = "";
+	_wait = NULL;
+	_type = valtype::t_unkown;
+	_option = argoption::rest;
 }
 
 arg::arg(const arg& node) {
 	_name = node._name;
 	_sname = node._sname;
-	_value = node._value;
 	_brief = node._brief;
+	_wait = node._wait;
 	_type = node._type;
+	_option = node._option;
 }
 
 arg& arg::operator=(const arg& node) {
 	_name = node._name;
 	_sname = node._sname;
-	_value = node._value;
 	_brief = node._brief;
+	_wait = node._wait;
 	_type = node._type;
+	_option = node._option;
 	return *this;
 }
 
@@ -31,26 +35,19 @@ arg::~arg() {
 }
 
 void arg::init() {
-	_value = jargdata();
+	_wait = NULL;
 }
 
 const string& arg::name()const {
 	return _name;
 }
 
-arg& arg::name(const string& s) {
-	_name = s;
-	return *this;
-}
 
 const string& arg::sname()const {
 	return _sname;
 }
 
-arg& arg::sname(const string& s) {
-	_sname = s;
-	return *this;
-}
+
 
 const string& arg::brief()const {
 	return _brief;
@@ -61,15 +58,38 @@ arg& arg::brief(const string& s) {
 	return *this;
 }
 
-argtype arg::type()const {
-	return _type;
+const string & jarg::arg::origin() const{
+	return _origin;
 }
 
-arg& arg::type(argtype opt) {
-	_type = opt;
+arg & jarg::arg::origin(const string & s){
+	_origin = s;
+	get_real_value grv;
+	grv(_origin, _type, _wait);
 	return *this;
 }
 
+void * jarg::arg::wait() const{
+	return _wait;
+}
+
+argoption arg::option()const {
+	return _option;
+}
+
+arg& arg::option(argoption opt) {
+	_option = opt;
+	return *this;
+}
+
+valtype arg::type()const {
+	return _type;
+}
+
+arg& arg::type(valtype vt) {
+	_type = vt;
+	return *this;
+}
 
 
 jap::jap() {
@@ -102,9 +122,122 @@ jap& jap::usage(const string& s) {
 	_usage = s;
 	return *this;
 }
+arg& jap::check(const string& name, const string& sname) {
+	if (_idx.end() != _idx.find(name) || _idx.end() != _idx.find(sname)) {
+		stringstream ss;
+		ss << "parameter name=" << name << " , or sname=" << sname << " already defined before.";
+		throw std::invalid_argument(ss.str().c_str());
+	}
+	arg a(name, sname);
+	a.type(valtype::t_bool);
+	a.option(argoption::check);
+	_args.push_back(a);
+	_idx[name] = _args.size() - 1;
+	_idx[sname] = _args.size() - 1;
+	return _args.back();
+}
 
-retcode jap::nameparse(int argc, char ** argv, int * where){
+arg& jap::key(const string& name, const string& sname) {
+	if (_idx.end() != _idx.find(name) || _idx.end() != _idx.find(sname)) {
+		stringstream ss;
+		ss << "parameter name=" << name << " , or sname=" << sname << " already defined before.";
+		throw std::invalid_argument(ss.str().c_str());
+	}
+	arg a(name, sname);
+	a.option(argoption::key);
+	_args.push_back(a);
+	_idx[name] = _args.size() - 1;
+	_idx[sname] = _args.size() - 1;
+	return _args.back();
+}
 
+arg& jap::rest(const string& name, const string& sname) {
+	if (_idx.end() != _idx.find(name) || _idx.end() != _idx.find(sname)) {
+		stringstream ss;
+		ss << "parameter name=" << name << " , or sname=" << sname << " already defined before.";
+		throw std::invalid_argument(ss.str().c_str());
+	}
+	arg a(name, sname);
+	a.option(argoption::rest);
+	_rest.push_back(a);
+	return _args.back();
+}
+
+bool jarg::jap::get(const string & key){
+	if (_idx.end() == _idx.find(key)) {
+		return false;
+	}
+	arg& a = _args[_idx.at(key)];
+	if (a.origin() == "" || a.origin() == "false" || a.origin() == "0") {
+		return false;
+	}
+	return true;
+}
+
+retcode jap::nameparse(int argc, char** argv, int* where) {
+	if (*where >= argc) {
+		return retcode::r_err;
+	}
+	string s = argv[*where];
+	s = s.substr(2);
+
+	size_t i = s.find('=');
+	string k = s;
+	string v = "";
+	if (string::npos != i) {
+		k = s.substr(0, i);
+		v = s.substr(i + 1);
+	}
+
+	if (_idx.end() == _idx.find(k)) {
+		std::cerr << "unknown parameter [" << k << "]" << std::endl;
+		return retcode::r_err;
+	}
+	//_args[_idx.at(k)].origin(k);
+	return keyparse(k, v);
+}
+
+retcode jap::snameparse(int argc, char** argv, int* where) {
+	if (*where >= argc) {
+		return retcode::r_err;
+	}
+	string s = argv[*where];
+	s = s.substr(1);
+	
+	if (s.size() > 1) {
+		retcode ret = retcode::r_ok;
+		for (auto ch : s) {
+			if (_idx.end() == _idx.find(string(1, ch))) {
+				return retcode::r_err;
+			}
+			if (retcode::r_err == (ret = keyparse(string(1, ch), ""))) {
+				return ret;
+			}
+		}
+	}
+	else if(s.size() == 1){
+		if (_idx.end() == _idx.find(s)) {
+			return retcode::r_err;
+		}
+		arg& a = _args[_idx.at(s)];
+		string k = s;
+		string v = "";
+		if (a.option() == argoption::check) {
+			v = "true";
+		}
+		else if ((*where) < argc-1 && a.option() == argoption::key) {
+			(*where)++;
+			v = argv[*where];
+		}
+		return keyparse(k, v);
+	}
+	
+	return retcode::r_err;
+}
+
+retcode jap::keyparse(const string& k, const string& v) {
+	arg& a = _args[_idx.at(k)].origin(v);
+	return retcode::r_ok;
 }
 
 retcode jap::parse(int argc , char** argv) {
@@ -112,66 +245,75 @@ retcode jap::parse(int argc , char** argv) {
 	_selfpath = argv[0];
 	set<size_t> spclst;
 	size_t cntr = 0;
+	
 	for (int i = 1; i < argc; i++) {
-		string s = argv[i];
-		if (s.size() >= 2 && s.substr(0, 2) == "--") {
-			if (_idx.end() == _idx.find(s.substr(2))) {
-				stringstream ss;
-				ss << "unkown parameter[" << s.substr(2) << "]";
-				_errors.push_back(ss.str());
-				return retcode::r_err;
+		string a = argv[i];
+		if (a.size() > 2 && a.substr(0, 2) == "--") {
+			if (retcode::r_err == (ret = nameparse(argc, argv, &i))) {
+				break;
 			}
-			size_t pos = s.find('=',2);
-			if (string::npos == pos) {
-				stringstream ss;
-				ss << "incompleted parameter[" << argv[i] << "]";
-				_errors.push_back(ss.str());
-				return retcode::r_err;
-			}
-			string k = s.substr(2, pos - 2);
-			string v = s.substr(pos + 1);
-			size_t idx = _idx.at(k);
-			if (idx >= _args.size()) {
-				_errors.push_back("unkown error , parameter index out range");
-				return retcode::r_err;
-			}
-			if (spclst.end() != spclst.find(idx)) {
-				stringstream ss;
-				ss << "the parameter[" << k << "] is defined , or same to ["
-					<< _args[*spclst.find(idx)].name() << ","
-					<< _args[*spclst.find(idx)].sname() << "]";
-				_errors.push_back(ss.str());
-				return retcode::r_err;
-			}
-			arg& node = _args[idx];
-			spclst.insert(idx);
-			if (var_opt::required == node.option()) {
-				cntr++;
-			}
-			node.origin(v);
-			continue;
 		}
-		if (s.size() >= 1 && s[0] == '-') {
-			s = s.substr(1);
-			if (s.empty()) {
-				_errors.push_back("incompleted parameter '-' , missing name");
-				return retcode::r_err;
+		else if (a.size() > 1 && a[0] == '-') {
+			if (retcode::r_err == (ret = snameparse(argc, argv, &i))) {
+				break;
 			}
-			if (s.size() == 1) {
-				if (_idx.end() == _idx.find(s)) {
-					arg& node = _args[_idx.at(s)];
-					if( valtype::t_bool == node.value.type())
-				}
-			}
-			continue;
 		}
-
 	}
 	return ret;
 }
 
-const string& jap::help()const {
-	return "";
+const string& jap::man()const {
+	stringstream ss;
+	//ss<<
+	return ss.str();
 }
 
-
+void * jarg::get_real_value::operator()(const string & s, valtype type, void * value){
+	if (NULL == value) {
+		return value;
+	}
+	switch (type) {
+	case valtype::t_bool:
+		*(bool*)value = !s.empty();
+		break;
+	case valtype::t_char:
+		*(char*)value = s.empty() ? '\0' : s[0];
+		break;
+	case valtype::t_int8:
+		*(int8_t*)value = static_cast<int8_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_int16:
+		*(int16_t*)value = static_cast<int16_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_int32:
+		*(int32_t*)value = static_cast<int32_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_int64:
+		*(int64_t*)value = static_cast<int64_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_uint8:
+		*(uint8_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_uint16:
+		*(uint16_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_uint32:
+		*(uint32_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_uint64:
+		*(uint64_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+		break;
+	case valtype::t_float:
+		*(float*)value = static_cast<float>(atof(s.c_str()));
+		break;
+	case valtype::t_double:
+		*(double*)value = atof(s.c_str());
+		break;
+	case valtype::t_string:
+		*(string*)value = s;
+		break;
+	default:
+		break;
+	}
+	return value;
+}
