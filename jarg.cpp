@@ -176,6 +176,7 @@ bool jarg::jap::get(const string & key){
 
 retcode jap::nameparse(int argc, char** argv, int* where) {
 	if (*where >= argc) {
+		std::cerr << "the \"where\"=" << where << " is over the lengeh of arguments." << std::endl;
 		return retcode::r_err;
 	}
 	string s = argv[*where];
@@ -199,6 +200,7 @@ retcode jap::nameparse(int argc, char** argv, int* where) {
 
 retcode jap::snameparse(int argc, char** argv, int* where) {
 	if (*where >= argc) {
+		std::cerr << "the \"where\"=" << where << " is over the lengeh of arguments." << std::endl;
 		return retcode::r_err;
 	}
 	string s = argv[*where];
@@ -208,15 +210,18 @@ retcode jap::snameparse(int argc, char** argv, int* where) {
 		retcode ret = retcode::r_ok;
 		for (auto ch : s) {
 			if (_idx.end() == _idx.find(string(1, ch))) {
+				std::cerr << "unknown parameter [" << ch << "]" << std::endl;
 				return retcode::r_err;
 			}
 			if (retcode::r_err == (ret = keyparse(string(1, ch), ""))) {
+				std::cerr << "key parameter error while parsing charater:"<<ch << std::endl;
 				return ret;
 			}
 		}
 	}
 	else if(s.size() == 1){
 		if (_idx.end() == _idx.find(s)) {
+			std::cerr << "unknown parameter [" << s << "]" << std::endl;
 			return retcode::r_err;
 		}
 		arg& a = _args[_idx.at(s)];
@@ -243,6 +248,7 @@ retcode jap::keyparse(const string& k, const string& v) {
 retcode jap::parse(int argc , char** argv) {
 	retcode ret = retcode::r_ok;
 	_selfpath = argv[0];
+	_name = _selfpath.substr(_selfpath.find_last_of('\\')+1);
 	set<size_t> spclst;
 	size_t cntr = 0;
 	
@@ -258,13 +264,30 @@ retcode jap::parse(int argc , char** argv) {
 				break;
 			}
 		}
+		if (a == "--help" || "-h" == a) {
+			std::cout << man() << std::endl;
+			break;
+		}
 	}
 	return ret;
 }
 
-const string& jap::man()const {
+const string jap::man()const {
 	stringstream ss;
-	//ss<<
+	ss << _name << std::endl;
+	if (_usage != "") {
+		ss << "\tusage:" << std::endl << "\t\t" << _usage << std::endl;
+	}
+	if ("" != _brief) {
+		ss << "\tbrief:" << std::endl << "\t\t" << _brief << std::endl;
+	}
+	for (auto a : _args) {
+		ss << "\t--" << a.name();
+		if (a.sname() != "") {
+			ss << " , -" << a.sname();
+		}
+		ss << std::endl << "\t\t" << a.brief() << std::endl;
+	}
 	return ss.str();
 }
 

@@ -24,9 +24,9 @@ int main(int argc, char** argv) {
 
 	jap.check("test", "t").brief("this is a simple test for bool variable");
 	jap.key("int", "i").brief("this is a simple test for int variable,lalala,demaxiya,oh,oh,oh,this is yes ,that is no");
-	jap.key("float", "f").brief("dididididididididdidididididdi^^^^^^^^^^^^^^^^^^^^...........................................................................");
-	jap.key("str", "s").brief("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-	jap.key("char", "c").brief("¿ìÊ¹ÓÃË«½Ø¹÷£¬ºßºß¹þºÙ£¬ºÙºÙºÙºÙ£¬À²À²À²À²£¬µÎµÎµÎµÎ£¬ÅªÅªÅ¶£¬");
+	jap.key("float", "f").brief("dididididididididdididididid.");
+	jap.key("str", "s").brief();
+	jap.key("char", "c").brief("");
 	jap.parse(argc, argv);
 	
 	std::cout << (jap.get("t") ? "true" : "false" )<< std::endl;
@@ -43,5 +43,9 @@ int main(int argc, char** argv) {
 
 	std::cout << jap.get<char>("c") << std::endl;
 	std::cout << jap.get<char>("char") << std::endl;
+	s = jap.man();
+	std::cout << jap.man() << std::endl;
+	std::cerr << "this is an error message!" << std::endl;
+	std::cin >> s;
 	return 0;
 }

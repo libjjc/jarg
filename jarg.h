@@ -176,10 +176,10 @@ namespace jarg {
 		retcode keyparse(const string& key, const string& value);
 	public:
 		retcode parse(int argc, char** argv);
-		const string& man()const;
+		const string man()const;
 	private:
 		typedef pair<valtype, void*> arg_t;
-
+		string _name;
 		string _selfpath;
 		string _brief;
 		string _usage;
