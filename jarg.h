@@ -43,9 +43,6 @@ namespace jarg {
 		return (str == "0" || str.empty() || str == "false") ? false : true;
 	}
 
-	//template<typename T> string tostr<T>(T t) { stringstream ss; ss << t; return ss.str(); }
-
-
 	enum class retcode :int {
 		r_ok = 0,
 		r_err = -1
@@ -86,59 +83,11 @@ namespace jarg {
 	enum class argoption : int {
 		key = 0,
 		check = 1,
-		rest = 2
+		special = 2,
+		rest = 3
 	};
 
-
-
-	class arg {
-	public:
-		//arg();
-		arg(const string& name,const string& sname = "");
-		arg(const arg& node);
-		arg& operator=(const arg& node);
-		~arg();
-	public:
-		const string& name()const;
-		//arg& name(const string& s);
-		const string& sname()const;
-		//arg& sname(const string& s);
-		const string& brief()const;
-		arg& brief(const string& s);
-		const string& origin()const;
-		arg& origin(const string& s);
-
-		template<typename T> arg& wait(T* t = NULL, T d = defaule_value<T>().value) {
-			_type = static_cast<valtype>(typecode<T>::code);
-			_wait = (void*)t;
-			return *this;
-		}
-		void* wait()const;
-
-		argoption option()const;
-		arg& option(argoption opt);
-
-		valtype type()const;
-		arg& type(valtype vt);
-
-	public:
-
-
-	private:
-
-		void init();
-
-	protected:
-		string _name;
-		string _sname;
-		string _origin;
-		
-		valtype _type;
-		void* _wait;
-
-		string _brief;
-		argoption _option;
-	};
+	
 
 	struct get_real_value {
 		void* operator()(const string& s, valtype type, void* value);
@@ -150,19 +99,54 @@ namespace jarg {
 		~jap();
 	protected:
 		jap(const jap& rhs) {}
-
 	public:
-
+		class arg {
+		public:
+			arg(const string& name, const string& sname = "");
+			arg(const arg& node);
+			arg& operator=(const arg& node);
+			~arg();
+		public:
+			friend class jap;
+			const string& name()const;
+			const string& sname()const;
+			const string& brief()const;
+			arg& brief(const string& s);
+			const string& origin()const;
+			arg& origin(const string& s);
+			template<typename T> arg& wait(T* t = NULL, T d = defaule_value<T>().value) {
+				_type = static_cast<valtype>(typecode<T>::code);
+				_wait = (void*)t;
+				return *this;
+			}
+			void* wait()const;
+		private:
+			void init();
+		private:
+			valtype type()const;
+			arg& type(valtype vt);
+			argoption option()const;
+			arg& option(argoption opt);
+		protected:
+			string _name;
+			string _sname;
+			string _origin;
+			valtype _type;
+			void* _wait;
+			string _brief;
+			argoption _option;
+		};
+	public:
 		arg& check(const string& name,const string& sname = "");
 		arg& key(const string& name,const string& sname = "");
-		arg& rest(const string& name,const string& sname = "");
-
+		arg& special(const string& name, const string& sname = "");
+	public:
 		bool get(const string& key);
 		template<typename T>
 		T get(const string& key, T v4none = default_value<T>().value);
-		//template<typename T>
-		//T rest(const string& key, T v4none);
-
+		const vector<string>& rest()const { return _rest; }
+		template<typename T>
+		vector<T> rest()const;
 	public:
 		const string& selfpath()const;
 		const string& brief()const;
@@ -184,9 +168,9 @@ namespace jarg {
 		string _brief;
 		string _usage;
 		vector<arg> _args;
-		vector<arg> _rest;
-
+		vector<string> _rest;
 		map<string, size_t> _idx;
+		vector<size_t> _spcidx;
 	};
 
 
@@ -202,6 +186,376 @@ namespace jarg {
 		}
 		
 		return strto<T>(a.origin());
+	}
+	template<typename T>
+	inline vector<T> jap::rest()const {
+		vector<T> result;
+		for (auto r : _rest) {
+			result.push_back(strto<T>(r));
+		}
+		return result;
+	}
+	jap::arg::arg(const string& name, const string& sname) {
+		init();
+		_name = name;
+		_sname = sname;
+		_brief = "";
+		_wait = NULL;
+		_type = valtype::t_unkown;
+		_option = argoption::rest;
+	}
+
+	jap::arg::arg(const arg& node) {
+		_name = node._name;
+		_sname = node._sname;
+		_brief = node._brief;
+		_wait = node._wait;
+		_type = node._type;
+		_option = node._option;
+	}
+
+	jap::arg& jap::arg::operator=(const arg& node) {
+		_name = node._name;
+		_sname = node._sname;
+		_brief = node._brief;
+		_wait = node._wait;
+		_type = node._type;
+		_option = node._option;
+		return *this;
+	}
+
+	jap::arg::~arg() {
+
+	}
+
+	void jap::arg::init() {
+		_wait = NULL;
+	}
+
+	const string& jap::arg::name()const {
+		return _name;
+	}
+
+
+	const string& jap::arg::sname()const {
+		return _sname;
+	}
+
+
+
+	const string& jap::arg::brief()const {
+		return _brief;
+	}
+
+	jap::arg& jap::arg::brief(const string& s) {
+		_brief = s;
+		return *this;
+	}
+
+	const string & jarg::jap::arg::origin() const {
+		return _origin;
+	}
+
+	jap::arg & jarg::jap::arg::origin(const string & s) {
+		_origin = s;
+		get_real_value grv;
+		grv(_origin, _type, _wait);
+		return *this;
+	}
+
+	void * jarg::jap::arg::wait() const {
+		return _wait;
+	}
+
+	argoption jap::arg::option()const {
+		return _option;
+	}
+
+	jap::arg& jap::arg::option(argoption opt) {
+		_option = opt;
+		return *this;
+	}
+
+	valtype jarg::jap::arg::type()const {
+		return _type;
+	}
+
+	jap::arg& jarg::jap::arg::type(valtype vt) {
+		_type = vt;
+		return *this;
+	}
+
+
+	jap::jap() {
+
+	}
+
+	jap::~jap() {
+
+	}
+
+
+	const string & jap::selfpath() const {
+		return _selfpath;
+	}
+
+	const string& jap::brief()const {
+		return _brief;
+	}
+
+	jap& jap::brief(const string& s) {
+		_brief = s;
+		return *this;
+	}
+
+	const string& jap::usage()const {
+		return _usage;
+	}
+
+	jap& jap::usage(const string& s) {
+		_usage = s;
+		return *this;
+	}
+	jap::arg& jap::check(const string& name, const string& sname) {
+		if (_idx.end() != _idx.find(name) || _idx.end() != _idx.find(sname)) {
+			stringstream ss;
+			ss << "parameter name=" << name << " , or sname=" << sname << " already defined before.";
+			throw std::invalid_argument(ss.str().c_str());
+		}
+		arg a(name, sname);
+		a.type(valtype::t_bool);
+		a.option(argoption::check);
+		_args.push_back(a);
+		_idx[name] = _args.size() - 1;
+		_idx[sname] = _args.size() - 1;
+		return _args.back();
+	}
+
+	jap::arg& jap::key(const string& name, const string& sname) {
+		if (_idx.end() != _idx.find(name) || _idx.end() != _idx.find(sname)) {
+			stringstream ss;
+			ss << "parameter name=" << name << " , or sname=" << sname << " already defined before.";
+			throw std::invalid_argument(ss.str().c_str());
+		}
+		arg a(name, sname);
+		a.option(argoption::key);
+		_args.push_back(a);
+		_idx[name] = _args.size() - 1;
+		_idx[sname] = _args.size() - 1;
+		return _args.back();
+	}
+
+	jap::arg& jap::special(const string& name, const string& sname) {
+		if (_idx.end() != _idx.find(name) || _idx.end() != _idx.find(sname)) {
+			stringstream ss;
+			ss << "parameter name=" << name << " , or sname=" << sname << " already defined before.";
+			throw std::invalid_argument(ss.str().c_str());
+		}
+		arg a(name, sname);
+		a.option(argoption::special);
+		_args.push_back(a);
+		_spcidx.push_back(_args.size());
+		return _args.back();
+	}
+
+	bool jarg::jap::get(const string & key) {
+		if (_idx.end() == _idx.find(key)) {
+			return false;
+		}
+		arg& a = _args[_idx.at(key)];
+		if (a.origin() == "" || a.origin() == "false" || a.origin() == "0") {
+			return false;
+		}
+		return true;
+	}
+
+	retcode jap::nameparse(int argc, char** argv, int* where) {
+		if (*where >= argc) {
+			std::cerr << "the \"where\"=" << where << " is over the lengeh of arguments." << std::endl;
+			return retcode::r_err;
+		}
+		string s = argv[*where];
+		s = s.substr(2);
+
+		size_t i = s.find('=');
+		string k = s;
+		string v = "";
+		if (string::npos != i) {
+			k = s.substr(0, i);
+			v = s.substr(i + 1);
+		}
+
+		if (_idx.end() == _idx.find(k)) {
+			std::cerr << "unknown parameter [" << k << "]" << std::endl;
+			return retcode::r_err;
+		}
+		//_args[_idx.at(k)].origin(k);
+		return keyparse(k, v);
+	}
+
+	retcode jap::snameparse(int argc, char** argv, int* where) {
+		if (*where >= argc) {
+			std::cerr << "the \"where\"=" << where << " is over the lengeh of arguments." << std::endl;
+			return retcode::r_err;
+		}
+		string s = argv[*where];
+		s = s.substr(1);
+
+		if (s.size() > 1) {
+			retcode ret = retcode::r_ok;
+			for (auto ch : s) {
+				if (_idx.end() == _idx.find(string(1, ch))) {
+					std::cerr << "unknown parameter [" << ch << "]" << std::endl;
+					return retcode::r_err;
+				}
+				if (retcode::r_err == (ret = keyparse(string(1, ch), ""))) {
+					std::cerr << "key parameter error while parsing charater:" << ch << std::endl;
+					return ret;
+				}
+			}
+		}
+		else if (s.size() == 1) {
+			if (_idx.end() == _idx.find(s)) {
+				std::cerr << "unknown parameter [" << s << "]" << std::endl;
+				return retcode::r_err;
+			}
+			jap::arg& a = _args[_idx.at(s)];
+			string k = s;
+			string v = "";
+			if (a.option() == argoption::check) {
+				v = "true";
+			}
+			else if ((*where) < argc - 1 && a.option() == argoption::key) {
+				(*where)++;
+				v = argv[*where];
+			}
+			return keyparse(k, v);
+		}
+
+		return retcode::r_err;
+	}
+
+	retcode jap::keyparse(const string& k, const string& v) {
+		arg& a = _args[_idx.at(k)].origin(v);
+		return retcode::r_ok;
+	}
+
+	retcode jap::parse(int argc, char** argv) {
+		retcode ret = retcode::r_ok;
+		_selfpath = argv[0];
+		_name = _selfpath.substr(_selfpath.find_last_of('\\') + 1);
+		set<size_t> spclst;
+		size_t cntr = 0;
+		int i = 1;
+		for (; i < argc; i++) {
+			string a = argv[i];
+			if (a.size() > 2 && a.substr(0, 2) == "--") {
+				if (retcode::r_err == (ret = nameparse(argc, argv, &i))) {
+					break;
+				}
+			}
+			else if (a.size() > 1 && a[0] == '-') {
+				if (retcode::r_err == (ret = snameparse(argc, argv, &i))) {
+					break;
+				}
+			}
+			else break;
+			if (a == "--help" || "-h" == a) {
+				std::cout << man() << std::endl;
+				break;
+			}
+		}
+		for (auto spc : _spcidx) {
+			if (spc >= _args.size()) {
+				ret = retcode::r_err;
+				std::cerr << "error: special index over the size of arguments ,while index = " << spc << " size = " << _args.size() << std::endl;
+				break;
+			}
+			arg& a = _args[spc];
+			if (i >= argc) {
+				ret = retcode::r_err;
+				std::cerr << "invalid argument : missing special parameter [" << a.name() << "]" << std::endl;
+				break;
+			}
+			a.origin(argv[i]);
+			i++;
+		}
+
+		for (; i < argc; i++) {
+			_rest.push_back(argv[i]);
+		}
+		return ret;
+	}
+
+	const string jap::man()const {
+		stringstream ss;
+		ss << _name << std::endl;
+		if (_usage != "") {
+			ss << "\tusage:" << std::endl << "\t\t" << _usage << std::endl;
+		}
+		if ("" != _brief) {
+			ss << "\tbrief:" << std::endl << "\t\t" << _brief << std::endl;
+		}
+		for (auto a : _args) {
+			ss << "\t--" << a.name();
+			if (a.sname() != "") {
+				ss << " , -" << a.sname();
+				if ("" != a.brief()) {
+					ss << std::endl << "\t\t" << a.brief() << std::endl;
+				}
+			}
+		}
+		return ss.str();
+	}
+
+	void * jarg::get_real_value::operator()(const string & s, valtype type, void * value) {
+		if (NULL == value) {
+			return value;
+		}
+		switch (type) {
+		case valtype::t_bool:
+			*(bool*)value = !s.empty();
+			break;
+		case valtype::t_char:
+			*(char*)value = s.empty() ? '\0' : s[0];
+			break;
+		case valtype::t_int8:
+			*(int8_t*)value = static_cast<int8_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_int16:
+			*(int16_t*)value = static_cast<int16_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_int32:
+			*(int32_t*)value = static_cast<int32_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_int64:
+			*(int64_t*)value = static_cast<int64_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_uint8:
+			*(uint8_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_uint16:
+			*(uint16_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_uint32:
+			*(uint32_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_uint64:
+			*(uint64_t*)value = static_cast<uint8_t>(atoi(s.c_str()));
+			break;
+		case valtype::t_float:
+			*(float*)value = static_cast<float>(atof(s.c_str()));
+			break;
+		case valtype::t_double:
+			*(double*)value = atof(s.c_str());
+			break;
+		case valtype::t_string:
+			*(string*)value = s;
+			break;
+		default:
+			break;
+		}
+		return value;
 	}
 
 }
