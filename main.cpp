@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include "jarg.h"
+#include "jarg.hpp"
 int main(int argc, char** argv) {
 	jarg::jap jap;
 	bool btest;
